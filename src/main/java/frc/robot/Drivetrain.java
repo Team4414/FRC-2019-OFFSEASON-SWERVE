@@ -14,6 +14,8 @@ public class Drivetrain extends Subsystem{
     private static Drivetrain instance;
 
     private SwerveKinematics swerveKinematics = new SwerveKinematics();
+    
+    public static final double kMaxTranslationSpeed = 8; //feet per second
 
     public static Drivetrain getInstance(){
         if (instance == null)
@@ -21,20 +23,14 @@ public class Drivetrain extends Subsystem{
         return instance;
     }
 
-    public static final ModuleConfig frontLeftConfig = new ModuleConfig(0.20751951, 4.739989749, 336.7304066792351);
-    public static ModuleConfig frontRightConfig = new ModuleConfig(0.213623025, 4.704589362 , 303.9304158738788);
-    public static ModuleConfig backLeftConfig = new ModuleConfig(0.261230442, 4.735106937, 193.80081);
-    public static ModuleConfig backRightConfig = new ModuleConfig(0.225830055, 4.7583002940, 153.288446);
+    //min and max voltages for each potentiometer along with the zero angle in degrees.
+    public static ModuleConfig frontLeftConfig  = new ModuleConfig(0.20751951, 4.739989749, 336.73040);
+    public static ModuleConfig frontRightConfig = new ModuleConfig(0.21362302, 4.704589362, 303.93040);
+    public static ModuleConfig backLeftConfig   = new ModuleConfig(0.26123044, 4.735106937, 193.80081);
+    public static ModuleConfig backRightConfig  = new ModuleConfig(0.22583005, 4.758300294, 153.28844);
 
     public static PigeonIMU mGyro;
-    public double gyroZero = 0;
-
-    // public static ModuleConfig frontLeftConfig = new ModuleConfig();
-    // public static ModuleConfig frontRightConfig = new ModuleConfig();
-    // public static ModuleConfig backLeftConfig = new ModuleConfig();
-    // public static ModuleConfig backRightConfig = new ModuleConfig();
-
-    //turn, drive, sensor
+    public double gyroOffset = 0;
 
     public static SwerveDriveModule mFLmodule;
     public static SwerveDriveModule mFRmodule;
@@ -47,14 +43,13 @@ public class Drivetrain extends Subsystem{
 
     private Drivetrain(){
         gyroMotor = new TalonSRX(14);
-        mFLmodule = new SwerveDriveModule(SwerveLocation.FRONT_LEFT, frontLeftConfig, new VictorSPX(3) , 4, 1, false, false);
-        mFRmodule = new SwerveDriveModule(SwerveLocation.FRONT_RIGHT, frontRightConfig, gyroMotor , 13, 2, true, false);
-        mBLmodule = new SwerveDriveModule(SwerveLocation.BACK_LEFT, backLeftConfig, new VictorSPX(2), 1, 0, true, false);
-        mBRmodule = new SwerveDriveModule(SwerveLocation.BACK_RIGHT, backRightConfig, new VictorSPX(15), 16, 3, false, false);
+        mFLmodule = new SwerveDriveModule(SwerveLocation.FRONT_LEFT, frontLeftConfig, new VictorSPX(3) , 4, 1, false);
+        mFRmodule = new SwerveDriveModule(SwerveLocation.FRONT_RIGHT, frontRightConfig, gyroMotor , 13, 2, true);
+        mBLmodule = new SwerveDriveModule(SwerveLocation.BACK_LEFT, backLeftConfig, new VictorSPX(2), 1, 0, true);
+        mBRmodule = new SwerveDriveModule(SwerveLocation.BACK_RIGHT, backRightConfig, new VictorSPX(15), 16, 3, false);
 
         mAllModules = new SwerveDriveModule[]{mFLmodule, mFRmodule, mBLmodule, mBRmodule};
 
-        // mGyro = new PigeonIMU(Drivetrain.mFRmodule.getTurnTalon());
         mGyro = new PigeonIMU(gyroMotor);
     }
 
@@ -68,18 +63,10 @@ public class Drivetrain extends Subsystem{
     }
 
     public void enableAll(boolean enable){
-        for (SwerveDriveModule m : mAllModules){
-            m.motorEnabled = enable;
-        }
-    }
-    
-    public void zeroAll(){
-        for (SwerveDriveModule m : mAllModules){
-            m.zero();
-        }
+        SwerveDriveModule.motorEnabled = enable;
     }
 
-    public void pushTurnAngles(){
+    public void displayTurnAngles(){
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getRawAngle());
         }
@@ -97,32 +84,31 @@ public class Drivetrain extends Subsystem{
         }
     }
 
-    public void setSpeeds(double x, double y, double rotation){
+    public void setRobotRelative(double x, double y, double rotation){
         swerveKinematics.calculate(x, y, rotation);
         
-        mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed());
-        mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed());
-        mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed());
-        mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed());
+        mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed);
+        mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed);
+        mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed);
+        mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed);
     }
 
+    public void setFieldRelative(double controllerX, double controllerY, double controllerRotate){
+        setRobotRelative((controllerX * Math.cos(angleRadians()) - (controllerY * Math.sin(angleRadians()))), 
+                  (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
+    } 
+
     public double getRawAngle(){
-        // System.out.println(getAngle());
         return mGyro.getFusedHeading();
     }
 
     public double getAngle(){
-        return getRawAngle() - gyroZero;
+        return getRawAngle() - gyroOffset;
     }
 
     public void zeroGyro(){
-        gyroZero = getRawAngle();
-    }
-
-    public void controlFieldRelative(double controllerX, double controllerY, double controllerRotate){
-        setSpeeds((controllerX * Math.cos(angleRadians()) - (controllerY * Math.sin(angleRadians()))), 
-                  (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
-    }  
+        gyroOffset = getRawAngle();
+    } 
 
     public double angleRadians(){
         return Math.toRadians(getAngle());
