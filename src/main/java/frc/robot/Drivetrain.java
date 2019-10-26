@@ -4,6 +4,7 @@ import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.ctre.phoenix.sensors.PigeonIMU;
 
+import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.SwerveDriveModule.ModuleConfig;
@@ -37,6 +38,17 @@ public class Drivetrain extends Subsystem{
     public static SwerveDriveModule mBLmodule;
     public static SwerveDriveModule mBRmodule;
 
+    private Notifier mHeadingPID;
+    private static final double kP = 1/65d;
+    private static final double kI = 0;
+    private static final double kD = 60/45d;
+    public static boolean closedLoopHeadingEnabled;
+    private double mLastError = 0;
+    private double mSetpoint = 0;
+    private double mClosedLoopRotateOutput;
+    private static final double kTimestep = 0.02;
+
+
     public TalonSRX gyroMotor;
 
     SwerveDriveModule[] mAllModules; 
@@ -51,6 +63,17 @@ public class Drivetrain extends Subsystem{
         mAllModules = new SwerveDriveModule[]{mFLmodule, mFRmodule, mBLmodule, mBRmodule};
 
         mGyro = new PigeonIMU(gyroMotor);
+
+        mHeadingPID = new Notifier(() -> {
+
+            double error = boundHalfDegrees(mSetpoint - getAngle());
+
+            mClosedLoopRotateOutput = (error* -kP) + ((error - mLastError) * -kD * kTimestep);
+            // mClosedLoopRotateOutput = 0;
+            mLastError = error;
+        });
+
+        mHeadingPID.startPeriodic(kTimestep);
     }
 
     @Override
@@ -70,6 +93,7 @@ public class Drivetrain extends Subsystem{
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getRawAngle());
         }
+        // System.out.println(mFLmodule.get);
     }
 
     public void setRawAngles(double deg){
@@ -81,7 +105,16 @@ public class Drivetrain extends Subsystem{
     public void setRawSpeed(double vel){
         for (SwerveDriveModule m: mAllModules){
             m.setDrivePower(vel);
+            m.debug(Robot.xbox.getRawAxis(4));
         }
+    }
+
+    @Deprecated
+    public void getSpeeds(double speed){
+        for (SwerveDriveModule m: mAllModules){
+            System.out.print(m.setRawSpeed(speed) + "\t");
+        }
+        System.out.println();
     }
 
     public void setRobotRelative(double x, double y, double rotation){
@@ -98,6 +131,19 @@ public class Drivetrain extends Subsystem{
                   (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
     } 
 
+    public void setFieldRelative(double controllerX, double controllerY, double controllerRotate, boolean closedLoopHeading){
+        if (closedLoopHeading){
+            setFieldRelative(controllerX, controllerY, mClosedLoopRotateOutput);
+            setClosedLoopSetpoint(controllerRotate);
+        }else{
+            setFieldRelative(controllerX, controllerY, controllerRotate);
+        }
+    }
+
+    public void setClosedLoopSetpoint(double setpoint){
+        mSetpoint = setpoint;
+    }
+
     public double getRawAngle(){
         return mGyro.getFusedHeading();
     }
@@ -112,6 +158,19 @@ public class Drivetrain extends Subsystem{
 
     public double angleRadians(){
         return Math.toRadians(getAngle());
+    }
+
+    public static double boundHalfDegrees(double angle_degrees) {
+        while (angle_degrees >= 180.0) angle_degrees -= 360.0;
+        while (angle_degrees < -180.0) angle_degrees += 360.0;
+        return angle_degrees;
+    }
+
+    public static double kSticktoHeading(boolean snap){
+        
+
+
+        return 0;
     }
 
 }

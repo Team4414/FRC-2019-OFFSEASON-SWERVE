@@ -39,13 +39,18 @@ public class SwerveDriveModule{
     public static final double kFPS2NativeU = kFeet2Ticks / 10;
     public static final double kNativeU2FPS = 1 / kFPS2NativeU;
 
+    public static final double kMaxTurnPower = 0.6;
+    public double kDriveF = 0;
+
     public SwerveDriveModule(SwerveLocation location, ModuleConfig config, IMotorController turnMotor, int kDrivePort, int kTurnSensor, boolean turnPhase){
         mTurnMotor = turnMotor;
         mDriveMotor = new TalonSRX(kDrivePort);
 
         mDriveMotor.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder);
-        mDriveMotor.config_kP(0, 0.20);
+        mDriveMotor.config_kP(0, 0.2); //0.2
+        mDriveMotor.config_kF(0, 0.1102);
         mDriveMotor.setSensorPhase(true);
+        mDriveMotor.overrideLimitSwitchesEnable(false);
 
         mTurnSetpoint = 0;
 
@@ -59,7 +64,7 @@ public class SwerveDriveModule{
             double inverter = (turnPhase) ? -1 : 1;
 
             if (motorEnabled){
-                mTurnMotor.set(ControlMode.PercentOutput, (error * kP * inverter) + ((getError() - mLastError) * kD * inverter * kTimestep));
+                mTurnMotor.set(ControlMode.PercentOutput, Math.min(kMaxTurnPower, (error * kP * inverter) + ((getError() - mLastError) * kD * inverter * kTimestep)));
                 mDriveMotor.set(ControlMode.Velocity, mVelSetpoint);
             }else{
                 mTurnMotor.set(ControlMode.PercentOutput, 0);
@@ -107,6 +112,12 @@ public class SwerveDriveModule{
 
     public double getRawAngle(){
         return mConfig.getRawAngle(mTurnPot);
+    }
+
+    @Deprecated
+    public double setRawSpeed(double speed){
+        mDriveMotor.set(ControlMode.PercentOutput, speed);
+        return mDriveMotor.getSelectedSensorVelocity() * kNativeU2FPS;
     }
 
     public String getLocationAsString(){
@@ -157,6 +168,13 @@ public class SwerveDriveModule{
 
     public void setDrivePower(double fps){
         mVelSetpoint = fps * kFPS2NativeU;
+    }
+
+    public void debug(double kFVal){
+        kFVal *= 1;
+        System.out.println(mDriveMotor.getClosedLoopError() + "\t\t" + kFVal);
+        kDriveF = kFVal;
+        mDriveMotor.config_kF(0, kFVal);
     }
 
     public static class ModuleConfig{

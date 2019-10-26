@@ -14,7 +14,7 @@ public class Robot extends TimedRobot {
   public static final double kWheelBaseLength = 17;
   public static final double kWheelBaseWidth = 17;
   public static final double kSwerveDiagonal = Math.hypot(kWheelBaseLength, kWheelBaseWidth);
-  private Joystick xbox;
+  public static Joystick xbox;
   private static final double kJoystickDeadzone = 0.1;
 
   @Override
@@ -29,12 +29,13 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    Drivetrain.getInstance().enableAll(false); //disable all motors in auto for calibration
+    Drivetrain.getInstance().enableAll(true); //disable all motors in auto for calibration
   }
 
   @Override
   public void autonomousPeriodic() {
-    Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
+    // Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
+    Drivetrain.getInstance().setFieldRelative(-deadZoneStick(0), deadZoneStick(1), xbox.getPOV(), true);
   }
 
   @Override
@@ -45,7 +46,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    Drivetrain.getInstance().setFieldRelative(-deadZoneStick(0), deadZoneStick(1), -deadZoneStick(4)); //some sticks inverted cuz xbox
+    Drivetrain.getInstance().setFieldRelative(-deadZoneStick(0), deadZoneStick(1), -deadZoneStick(4), false); //some sticks inverted cuz xbox
+    if (xbox.getRawButton(7)){
+      Drivetrain.getInstance().zeroGyro();
+    }
   }
 
   private double deadZoneStick(int stickId){
@@ -53,5 +57,11 @@ public class Robot extends TimedRobot {
       return 0;
     }
     return xbox.getRawAxis(stickId);
+  }
+
+  @Override
+  public void testPeriodic() {
+    Drivetrain.getInstance().enableAll(false);
+    Drivetrain.getInstance().getSpeeds(-deadZoneStick(0));
   }
 }
