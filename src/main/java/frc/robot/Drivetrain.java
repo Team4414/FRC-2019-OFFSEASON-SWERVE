@@ -3,8 +3,10 @@ package frc.robot;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.ctre.phoenix.sensors.PigeonIMU;
+import com.ctre.phoenix.sensors.PigeonIMU.CalibrationMode;
 
 import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.SwerveDriveModule.ModuleConfig;
@@ -16,7 +18,8 @@ public class Drivetrain extends Subsystem{
 
     private SwerveKinematics swerveKinematics = new SwerveKinematics();
     
-    public static final double kMaxTranslationSpeed = 8; //feet per second
+    public static final double kMaxTranslationSpeed = 15; //feet per second
+    public static final double kReversableWheelThreshold = 5;
 
     public static Drivetrain getInstance(){
         if (instance == null)
@@ -25,13 +28,14 @@ public class Drivetrain extends Subsystem{
     }
 
     //min and max voltages for each potentiometer along with the zero angle in degrees.
-    public static ModuleConfig frontLeftConfig  = new ModuleConfig(0.20751951, 4.739989749, 336.73040);
-    public static ModuleConfig frontRightConfig = new ModuleConfig(0.21362302, 4.704589362, 303.93040);
-    public static ModuleConfig backLeftConfig   = new ModuleConfig(0.26123044, 4.735106937, 193.80081);
-    public static ModuleConfig backRightConfig  = new ModuleConfig(0.22583005, 4.758300294, 153.28844);
+    //location 
+    public static ModuleConfig frontLeftConfig  = new ModuleConfig(0.20751951, 4.739989749, 155.712);
+    public static ModuleConfig frontRightConfig = new ModuleConfig(0.21362302, 4.704589362, 304.221);
+    public static ModuleConfig backLeftConfig   = new ModuleConfig(0.26123044, 4.735106937, 194.783);
+    public static ModuleConfig backRightConfig  = new ModuleConfig(0.22583005, 4.758300294, 153.676);
 
     public static PigeonIMU mGyro;
-    public double gyroOffset = 0;
+    public volatile double gyroOffset = 0;
 
     public static SwerveDriveModule mFLmodule;
     public static SwerveDriveModule mFRmodule;
@@ -39,13 +43,13 @@ public class Drivetrain extends Subsystem{
     public static SwerveDriveModule mBRmodule;
 
     private Notifier mHeadingPID;
-    private static final double kP = 1/65d;
+    private static final double kP = 1/270d;
     private static final double kI = 0;
-    private static final double kD = 60/45d;
+    private static final double kD = 0/45d; //70
     public static boolean closedLoopHeadingEnabled;
-    private double mLastError = 0;
-    private double mSetpoint = 0;
-    private double mClosedLoopRotateOutput;
+    private volatile double mLastError = 0;
+    private volatile double mSetpoint = 0;
+    private volatile double mClosedLoopRotateOutput;
     private static final double kTimestep = 0.02;
 
 
@@ -53,7 +57,10 @@ public class Drivetrain extends Subsystem{
 
     SwerveDriveModule[] mAllModules; 
 
+    public double startTime = 0;
+
     private Drivetrain(){
+        //location, config, turn motor.
         gyroMotor = new TalonSRX(14);
         mFLmodule = new SwerveDriveModule(SwerveLocation.FRONT_LEFT, frontLeftConfig, new VictorSPX(3) , 4, 1, false);
         mFRmodule = new SwerveDriveModule(SwerveLocation.FRONT_RIGHT, frontRightConfig, gyroMotor , 13, 2, true);
@@ -64,13 +71,15 @@ public class Drivetrain extends Subsystem{
 
         mGyro = new PigeonIMU(gyroMotor);
 
+        //no lag
         mHeadingPID = new Notifier(() -> {
+            // startTime = Timer.getFPGATimestamp();
 
-            double error = boundHalfDegrees(mSetpoint - getAngle());
+            // double error = boundHalfDegrees(mSetpoint - getAngle());
 
-            mClosedLoopRotateOutput = (error* -kP) + ((error - mLastError) * -kD * kTimestep);
-            // mClosedLoopRotateOutput = 0;
-            mLastError = error;
+            // mClosedLoopRotateOutput = (error* -kP) + ((error - mLastError) * -kD * kTimestep);
+            // // mClosedLoopRotateOutput = 0;
+            // mLastError = error;
         });
 
         mHeadingPID.startPeriodic(kTimestep);
@@ -90,10 +99,10 @@ public class Drivetrain extends Subsystem{
     }
 
     public void displayTurnAngles(){
+        System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getRawAngle());
         }
-        // System.out.println(mFLmodule.get);
     }
 
     public void setRawAngles(double deg){
@@ -105,7 +114,7 @@ public class Drivetrain extends Subsystem{
     public void setRawSpeed(double vel){
         for (SwerveDriveModule m: mAllModules){
             m.setDrivePower(vel);
-            m.debug(Robot.xbox.getRawAxis(4));
+            // m.debug(Robot.xbox.getRawAxis(4));
         }
     }
 
@@ -119,22 +128,48 @@ public class Drivetrain extends Subsystem{
 
     public void setRobotRelative(double x, double y, double rotation){
         swerveKinematics.calculate(x, y, rotation);
-        
-        mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed);
-        mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed);
-        mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed);
-        mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed);
+
+        if (swerveKinematics.getAverageSpeed() < kReversableWheelThreshold){
+            mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, true);
+            mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed, true);
+            mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed, true);
+            mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed, true);
+        }else{
+            mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, false);
+            mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed, false);
+            mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed, false);
+            mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed, false);
+        }
     }
+
+    // public void calibrateGyro(boolean calibrate){
+    //     if (calibrate){
+    //         mGyro.enterCalibrationMode(CalibrationMode.Accelerometer);
+    //         mGyro.enterCalibrationMode(CalibrationMode.BootTareGyroAccel);
+    //     }else{
+
+    //     }
+    // }
 
     public void setFieldRelative(double controllerX, double controllerY, double controllerRotate){
         setRobotRelative((controllerX * Math.cos(angleRadians()) - (controllerY * Math.sin(angleRadians()))), 
                   (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
     } 
 
+    double error = 0;
+
     public void setFieldRelative(double controllerX, double controllerY, double controllerRotate, boolean closedLoopHeading){
         if (closedLoopHeading){
-            setFieldRelative(controllerX, controllerY, mClosedLoopRotateOutput);
             setClosedLoopSetpoint(controllerRotate);
+            {
+                error = boundHalfDegrees(mSetpoint - getAngle());
+
+                mClosedLoopRotateOutput = (error* -kP) + ((error - mLastError) * -kD * kTimestep);
+
+                mLastError = error;
+            }
+
+            setFieldRelative(controllerX, controllerY, mClosedLoopRotateOutput);
         }else{
             setFieldRelative(controllerX, controllerY, controllerRotate);
         }
@@ -160,6 +195,7 @@ public class Drivetrain extends Subsystem{
         return Math.toRadians(getAngle());
     }
 
+    //no lag
     public static double boundHalfDegrees(double angle_degrees) {
         while (angle_degrees >= 180.0) angle_degrees -= 360.0;
         while (angle_degrees < -180.0) angle_degrees += 360.0;

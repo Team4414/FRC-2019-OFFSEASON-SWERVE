@@ -23,9 +23,9 @@ public class SwerveDriveModule{
     private SwerveLocation mLocation;
 
     private Notifier turnPID;
-    private final double kP = (0.015);
-    private final double kD = (0.75); 
-    private final double kTimestep = 0.02;
+    private final double kP = (0.008);
+    private final double kD = (0);  //0.75
+    private final double kTimestep = 0.015;
 
     private double mTurnSetpoint;
     private double mVelSetpoint;
@@ -39,7 +39,7 @@ public class SwerveDriveModule{
     public static final double kFPS2NativeU = kFeet2Ticks / 10;
     public static final double kNativeU2FPS = 1 / kFPS2NativeU;
 
-    public static final double kMaxTurnPower = 0.6;
+    public static final double kMaxTurnPower = 0.83;
     public double kDriveF = 0;
 
     public SwerveDriveModule(SwerveLocation location, ModuleConfig config, IMotorController turnMotor, int kDrivePort, int kTurnSensor, boolean turnPhase){
@@ -47,10 +47,11 @@ public class SwerveDriveModule{
         mDriveMotor = new TalonSRX(kDrivePort);
 
         mDriveMotor.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder);
-        mDriveMotor.config_kP(0, 0.2); //0.2
-        mDriveMotor.config_kF(0, 0.1102);
+        mDriveMotor.config_kP(0, 0.1); //0.2
+        mDriveMotor.config_kF(0, 0.103);
         mDriveMotor.setSensorPhase(true);
         mDriveMotor.overrideLimitSwitchesEnable(false);
+        mDriveMotor.overrideSoftLimitsEnable(false);
 
         mTurnSetpoint = 0;
 
@@ -67,8 +68,8 @@ public class SwerveDriveModule{
                 mTurnMotor.set(ControlMode.PercentOutput, Math.min(kMaxTurnPower, (error * kP * inverter) + ((getError() - mLastError) * kD * inverter * kTimestep)));
                 mDriveMotor.set(ControlMode.Velocity, mVelSetpoint);
             }else{
-                mTurnMotor.set(ControlMode.PercentOutput, 0);
-                mDriveMotor.set(ControlMode.PercentOutput, 0);
+                // mTurnMotor.set(ControlMode.PercentOutput, 0);
+                // mDriveMotor.set(ControlMode.PercentOutput, 0);
             }
             mLastError = error;
         });
@@ -93,6 +94,14 @@ public class SwerveDriveModule{
         SmartDashboard.putNumber(getLocationAsString() + " Swerve Pot Min", mConfig.turnMinVoltage);
 
         mConfig.calibrateTurnPot(mTurnPot);
+    }
+
+    double maxCurrent = 0;
+
+    public double getCurrent(){
+        if (Robot.pdp.getCurrent(2) > maxCurrent)
+            maxCurrent = Robot.pdp.getCurrent(2);
+        return maxCurrent;
     }
 
     @Deprecated
@@ -148,21 +157,25 @@ public class SwerveDriveModule{
         mTurnSetpoint = deg;
     }
 
-    public void set(double degrees, double power){
-        double supplement = degrees > 0 ? degrees - 180 : 180 + degrees;
+    public void set(double degrees, double power, boolean reverseWheel){
 
-        if(Math.abs(supplement-mLastAngle) <= 90){
-            setSteeringDegrees(supplement);
-            setDrivePower(-power);
-            mLastAngle = supplement;
-        }
-        else {
+        if (reverseWheel){
+            double supplement = degrees > 0 ? degrees - 180 : 180 + degrees;
+
+            if(Math.abs(supplement-mLastAngle) <= 90){
+                setSteeringDegrees(supplement);
+                setDrivePower(-power);
+                mLastAngle = supplement;
+            }
+            else {
+                setSteeringDegrees(degrees);
+                setDrivePower(power);
+                mLastAngle = degrees;
+            }
+        }else{
             setSteeringDegrees(degrees);
             setDrivePower(power);
-            mLastAngle = degrees;
         }
-
-        // setSteeringDegrees(degrees);
         // mVelSetpoint = power * 4096;
     }
 

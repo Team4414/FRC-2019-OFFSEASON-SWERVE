@@ -76,7 +76,11 @@ public class SwerveKinematics {
 	}
 	public double rrSteeringAngle(){
 		return rearRightSteeringAngle;
-    }
+	}
+	
+	public double getAverageSpeed(){
+		return (frontLeftWheelSpeed + frontRightWheelSpeed + rearLeftWheelSpeed + rearRightWheelSpeed) / 4d;
+	}
     
     public static double normalize(double current, double test){
     	if(current > test) return current;
