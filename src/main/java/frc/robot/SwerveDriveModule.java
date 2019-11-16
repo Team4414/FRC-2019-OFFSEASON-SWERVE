@@ -7,6 +7,7 @@ import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.command.PIDCommand;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class SwerveDriveModule{
@@ -23,14 +24,20 @@ public class SwerveDriveModule{
     private SwerveLocation mLocation;
 
     private Notifier turnPID;
-    private final double kP = (0.008);
-    private final double kD = (0);  //0.75
-    private final double kTimestep = 0.015;
+    private final double kP = (0.012);
+    private final double kD = (0.00024);  //0.75
+    private final double kTimestep = 0.02d;
 
-    private double mTurnSetpoint;
-    private double mVelSetpoint;
-    private double mLastError;
-    private double mLastAngle = 0;
+    // PIDCommand
+
+    public double mTurnSetpoint;
+    public double mVelSetpoint;
+    public double mLastError;
+    public double mLastAngle = 0;
+    public double mError = 0;
+    public double mInverter = 0;
+
+    private boolean mTurnPhase = false;
 
     public static boolean motorEnabled = true;
     
@@ -52,8 +59,11 @@ public class SwerveDriveModule{
         mDriveMotor.setSensorPhase(true);
         mDriveMotor.overrideLimitSwitchesEnable(false);
         mDriveMotor.overrideSoftLimitsEnable(false);
+        mDriveMotor.configContinuousCurrentLimit(40);
 
         mTurnSetpoint = 0;
+
+        mTurnPhase = turnPhase;
 
         mLocation = location;
         mConfig = config;
@@ -61,20 +71,10 @@ public class SwerveDriveModule{
 
         turnPID = new Notifier(() -> {
 
-            double error = getError();
-            double inverter = (turnPhase) ? -1 : 1;
-
-            if (motorEnabled){
-                mTurnMotor.set(ControlMode.PercentOutput, Math.min(kMaxTurnPower, (error * kP * inverter) + ((getError() - mLastError) * kD * inverter * kTimestep)));
-                mDriveMotor.set(ControlMode.Velocity, mVelSetpoint);
-            }else{
-                // mTurnMotor.set(ControlMode.PercentOutput, 0);
-                // mDriveMotor.set(ControlMode.PercentOutput, 0);
-            }
-            mLastError = error;
+            
         });
 
-        turnPID.startPeriodic(kTimestep);
+        // turnPID.startPeriodic(kTimestep);
     }
 
     public void config(ModuleConfig config){
@@ -154,9 +154,32 @@ public class SwerveDriveModule{
     }
 
     public void setSteeringDegrees(double deg){
-        mTurnSetpoint = deg;
+        if (!Robot.mSticksAreInDeadzone)
+            mTurnSetpoint = deg;
     }
 
+    public void updateHeadingLoop(){
+        mError = getError();
+        mInverter = (mTurnPhase) ? -1 : 1;
+
+        if (motorEnabled){
+            // if (Robot.mSticksAreInDeadzone){
+            //     mTurnSetpoint = getAngle();
+            // }
+                mTurnMotor.set(ControlMode.PercentOutput, mInverter * ((mError * kP) + (((mError - mLastError) / kTimestep) * kD)));
+                // System.out.println((mError - mLastError) / 0.02d);
+                // System.out.println(mError);
+            // }else{
+                // mTurnMotor.set(ControlMode.PercentOutput, 0);
+            // }
+                mDriveMotor.set(ControlMode.Velocity, Math.cos(Math.toRadians(mError)) * mVelSetpoint);
+        }else{
+            // mTurnMotor.set(ControlMode.PercentOutput, 0);
+            // mDriveMotor.set(ControlMode.PercentOutput, 0);
+        }
+
+        mLastError = mError;
+    }
     public void set(double degrees, double power, boolean reverseWheel){
 
         if (reverseWheel){
@@ -175,6 +198,10 @@ public class SwerveDriveModule{
         }else{
             setSteeringDegrees(degrees);
             setDrivePower(power);
+        }
+
+        {
+           
         }
         // mVelSetpoint = power * 4096;
     }

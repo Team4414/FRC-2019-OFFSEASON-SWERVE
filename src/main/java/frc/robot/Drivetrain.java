@@ -43,9 +43,9 @@ public class Drivetrain extends Subsystem{
     public static SwerveDriveModule mBRmodule;
 
     private Notifier mHeadingPID;
-    private static final double kP = 1/270d;
+    private static final double kP = 1/90d;
     private static final double kI = 0;
-    private static final double kD = 0/45d; //70
+    private static final double kD = 1/18000d; //70
     public static boolean closedLoopHeadingEnabled;
     private volatile double mLastError = 0;
     private volatile double mSetpoint = 0;
@@ -156,6 +156,11 @@ public class Drivetrain extends Subsystem{
                   (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
     } 
 
+    public void setOnlyYRobotRelative(double controllerX, double controllerY, double controllerRotate){
+        setRobotRelative((controllerX), 
+                  (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
+    }
+
     double error = 0;
 
     public void setFieldRelative(double controllerX, double controllerY, double controllerRotate, boolean closedLoopHeading){
@@ -164,7 +169,11 @@ public class Drivetrain extends Subsystem{
             {
                 error = boundHalfDegrees(mSetpoint - getAngle());
 
-                mClosedLoopRotateOutput = (error* -kP) + ((error - mLastError) * -kD * kTimestep);
+                mClosedLoopRotateOutput = -((error* kP) + ((error - mLastError) * kD / kTimestep));
+
+                if (Math.abs(mClosedLoopRotateOutput) < 0.01){
+                    mClosedLoopRotateOutput = 0;
+                }
 
                 mLastError = error;
             }
