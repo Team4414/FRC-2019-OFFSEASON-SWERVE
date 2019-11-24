@@ -24,8 +24,8 @@ public class SwerveDriveModule{
     private SwerveLocation mLocation;
 
     private Notifier turnPID;
-    private final double kP = (0.012);
-    private final double kD = (0.00024);  //0.75
+    private final double kP = (0.007); //0.012
+    private final double kD = (0.00024);  //0.00024
     private final double kTimestep = 0.02d;
 
     // PIDCommand
@@ -36,6 +36,8 @@ public class SwerveDriveModule{
     public double mLastAngle = 0;
     public double mError = 0;
     public double mInverter = 0;
+    public double mTurnSetpointDesired = 0;
+
 
     private boolean mTurnPhase = false;
 
@@ -60,6 +62,10 @@ public class SwerveDriveModule{
         mDriveMotor.overrideLimitSwitchesEnable(false);
         mDriveMotor.overrideSoftLimitsEnable(false);
         mDriveMotor.configContinuousCurrentLimit(40);
+
+        mDriveMotor.configOpenloopRamp(0.08);
+        mDriveMotor.configVoltageCompSaturation(12);
+        mDriveMotor.enableVoltageCompensation(true);
 
         mTurnSetpoint = 0;
 
@@ -154,13 +160,20 @@ public class SwerveDriveModule{
     }
 
     public void setSteeringDegrees(double deg){
-        if (!Robot.mSticksAreInDeadzone)
-            mTurnSetpoint = deg;
+        // if (!Robot.mSticksAreInDeadzone)
+            mTurnSetpointDesired = deg;
     }
 
     public void updateHeadingLoop(){
+
+        if (!Robot.mSticksAreInDeadzone){
+            mTurnSetpoint = mTurnSetpointDesired;
+        }
+
         mError = getError();
         mInverter = (mTurnPhase) ? -1 : 1;
+
+        // System.out.println(mTurnSetpoint);
 
         if (motorEnabled){
             // if (Robot.mSticksAreInDeadzone){

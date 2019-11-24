@@ -27,7 +27,7 @@ public class Drivetrain extends Subsystem{
         return instance;
     }
 
-    //min and max voltages for each potentiometer along with the zero angle in degrees.
+    //min and max voltages for each potentiometer along with the zero angle in degrees.po
     //location 
     public static ModuleConfig frontLeftConfig  = new ModuleConfig(0.20751951, 4.739989749, 155.712);
     public static ModuleConfig frontRightConfig = new ModuleConfig(0.21362302, 4.704589362, 304.221);
@@ -43,9 +43,9 @@ public class Drivetrain extends Subsystem{
     public static SwerveDriveModule mBRmodule;
 
     private Notifier mHeadingPID;
-    private static final double kP = 1/90d;
+    private static final double kP = 1/180d;
     private static final double kI = 0;
-    private static final double kD = 1/18000d; //70
+    private static final double kD = 1/5000d; //70
     public static boolean closedLoopHeadingEnabled;
     private volatile double mLastError = 0;
     private volatile double mSetpoint = 0;
@@ -54,6 +54,9 @@ public class Drivetrain extends Subsystem{
 
 
     public TalonSRX gyroMotor;
+    public VictorSPX flTurn;
+    public VictorSPX blTurn;
+    public VictorSPX brTurn;
 
     SwerveDriveModule[] mAllModules; 
 
@@ -62,10 +65,31 @@ public class Drivetrain extends Subsystem{
     private Drivetrain(){
         //location, config, turn motor.
         gyroMotor = new TalonSRX(14);
-        mFLmodule = new SwerveDriveModule(SwerveLocation.FRONT_LEFT, frontLeftConfig, new VictorSPX(3) , 4, 1, false);
+        flTurn = new VictorSPX(3);
+        blTurn = new VictorSPX(2);
+        brTurn = new VictorSPX(15);
+
+        mFLmodule = new SwerveDriveModule(SwerveLocation.FRONT_LEFT, frontLeftConfig, flTurn , 4, 1, false);
         mFRmodule = new SwerveDriveModule(SwerveLocation.FRONT_RIGHT, frontRightConfig, gyroMotor , 13, 2, true);
-        mBLmodule = new SwerveDriveModule(SwerveLocation.BACK_LEFT, backLeftConfig, new VictorSPX(2), 1, 0, true);
-        mBRmodule = new SwerveDriveModule(SwerveLocation.BACK_RIGHT, backRightConfig, new VictorSPX(15), 16, 3, false);
+        mBLmodule = new SwerveDriveModule(SwerveLocation.BACK_LEFT, backLeftConfig, blTurn, 1, 0, true);
+        mBRmodule = new SwerveDriveModule(SwerveLocation.BACK_RIGHT, backRightConfig, brTurn, 16, 3, false);
+
+        gyroMotor.configOpenloopRamp(0.08);
+        gyroMotor.configVoltageCompSaturation(12);
+        gyroMotor.enableVoltageCompensation(true);
+
+        flTurn.configOpenloopRamp(0.08);
+        flTurn.configVoltageCompSaturation(12);
+        flTurn.enableVoltageCompensation(true);
+
+        blTurn.configOpenloopRamp(0.08);
+        blTurn.configVoltageCompSaturation(12);
+        blTurn.enableVoltageCompensation(true);
+
+        brTurn.configOpenloopRamp(0.08);
+        brTurn.configVoltageCompSaturation(12);
+        brTurn.enableVoltageCompensation(true);
+
 
         mAllModules = new SwerveDriveModule[]{mFLmodule, mFRmodule, mBLmodule, mBRmodule};
 
@@ -171,9 +195,11 @@ public class Drivetrain extends Subsystem{
 
                 mClosedLoopRotateOutput = -((error* kP) + ((error - mLastError) * kD / kTimestep));
 
-                if (Math.abs(mClosedLoopRotateOutput) < 0.01){
+                if (Math.abs(mClosedLoopRotateOutput) < 0.02){
                     mClosedLoopRotateOutput = 0;
                 }
+
+                mClosedLoopRotateOutput = Math.signum(mClosedLoopRotateOutput) * Math.min(Math.abs(mClosedLoopRotateOutput), 0.6);
 
                 mLastError = error;
             }

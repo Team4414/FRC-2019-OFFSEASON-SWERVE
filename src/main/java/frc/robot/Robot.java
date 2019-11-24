@@ -27,7 +27,7 @@ public class Robot extends TimedRobot {
   private static final double kJoystickDeadzone = 0.06;
   private static final double kRotationScalar = 1.4;
   private static final double kRotationMax = 0.8;
-  private static final double kTranslationScalar = 1.8;
+  private static final double kTranslationScalar = 1.4;
 
   private static VictorSPX mPP;
 
@@ -94,19 +94,23 @@ public class Robot extends TimedRobot {
 
     mSticksAreInDeadzone = (getDeadZoneStick(driveStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0) && getDeadZoneStick(turnStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0));
 
+    // System.out.println(getDeadZoneStick(driveStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0));
+    // Drivetrain.getInstance().setFieldRelative(0, 0, stickToDegee(turnStick , 0, 1), true);
+
+    // if (driveStick.getRawButton(12)){
+    //   Drivetrain.getInstance().zeroGyro();
+    // }
+
     if (!driveStick.getRawButton(11)){
-      // if(!mSticksAreInDeadzone)
        Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), stickToDegee(turnStick , 0, 1), true);
     }else if(driveStick.getRawButton(11)){
       lastHeading = Drivetrain.getInstance().getAngle();
-      // if(!mSticksAreInDeadzone)
         Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), -deadZoneStick(turnStick, 0, 1), false);
-      // Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1) * deadZoneStick(driveStick, 0), getScalar(driveStick, 0, 1) * deadZoneStick(driveStick, 1), stickToDegee(turnStick, 0, 1), true);
-      // Drivetrain.getInstance().setFieldRelative(getScaledStick(driveStick, 0, kTranslationScalar), -getScaledStick(driveStick, 1, kTranslationScalar), -getScaledStick(turnStick ,0, kRotationScalar) * kRotationMax, false);
     }else if (driveStick.getRawButton(12)){
-      mLimelight.setLED(LED_STATE.ON);
-      mLimelight.setCamMode(CAM_MODE.VISION);
-      Drivetrain.getInstance().setFieldRelative(0.1 * mLimelight.tX(), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), stickToDegee(turnStick , 0, 1), false);
+      Drivetrain.getInstance().zeroGyro();
+      // mLimelight.setLED(LED_STATE.ON);
+      // mLimelight.setCamMode(CAM_MODE.VISION);
+      // Drivetrain.getInstance().setFieldRelative(0.1 * mLimelight.tX(), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), stickToDegee(turnStick , 0, 1), false);
     }else{
       mLimelight.setLED(LED_STATE.OFF);
     }
@@ -156,8 +160,8 @@ public class Robot extends TimedRobot {
   //for translate
   private double getScalar(Joystick stick, int stickX, int stickY, double scalar){
     // return (Math.pow(Math.abs(deadZoneStick(stick, stickId)), scalar) * Math.signum(deadZoneStick(stick, stickId)));
-    // return Math.pow(Math.hypot(deadZoneStick(stick, stickX, stickY), deadZoneStick(stick, stickY, stickX)), kTranslationScalar);
-    return 1;
+    return Math.pow(Math.hypot(deadZoneStick(stick, stickX, stickY), deadZoneStick(stick, stickY, stickX)), kTranslationScalar);
+    // return 1;
     // return Math.pow((Math.hypot(deadZoneStick(stick, stickX, stickY), deadZoneStick(stick, stickY, stickX))), 2);
   }
 
