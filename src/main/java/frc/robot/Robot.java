@@ -27,7 +27,7 @@ public class Robot extends TimedRobot {
   private static final double kJoystickDeadzone = 0.06;
   private static final double kRotationScalar = 1.4;
   private static final double kRotationMax = 0.8;
-  private static final double kTranslationScalar = 1.4;
+  private static final double kTranslationScalar = 1; //1.4
 
   private static VictorSPX mPP;
 
@@ -44,6 +44,8 @@ public class Robot extends TimedRobot {
 
     mPP = new VictorSPX(11);
     mLimelight = new Limelight(Side.BALL);
+    Drivetrain.getInstance().zeroGyro();
+    Drivetrain.getInstance().zeroPosition();
   }
 
   @Override
@@ -58,6 +60,16 @@ public class Robot extends TimedRobot {
     Drivetrain.getInstance().mFRmodule.updateHeadingLoop();
     Drivetrain.getInstance().mBLmodule.updateHeadingLoop();
     Drivetrain.getInstance().mBRmodule.updateHeadingLoop();
+
+    Drivetrain.getInstance().displayTurnAngles();
+
+    Drivetrain.getInstance().updatePosition();
+
+    System.out.println("X: " + Drivetrain.getInstance().getPosition().x + "\t Y: " + Drivetrain.getInstance().getPosition().y + "\t" + Drivetrain.getInstance().getAngle());
+    // System.out.println(Drivetrain.getInstance().getPosition().y);
+    // System.out.println(Drivetrain.getInstance().getAngle());
+    // if (Drivetrain.getInstance().get)
+    // System.out.println(Drivetrain.getInstance.get);
 
     // System.out.println((Drivetrain.getInstance().mFLmodule.mError - Drivetrain.getInstance().mFLmodule.mLastError) / 0.02d);
   }

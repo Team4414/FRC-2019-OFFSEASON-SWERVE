@@ -52,6 +52,7 @@ public class Drivetrain extends Subsystem{
     private volatile double mClosedLoopRotateOutput;
     private static final double kTimestep = 0.02;
 
+    public Position mRobotPos;
 
     public TalonSRX gyroMotor;
     public VictorSPX flTurn;
@@ -90,6 +91,7 @@ public class Drivetrain extends Subsystem{
         brTurn.configVoltageCompSaturation(12);
         brTurn.enableVoltageCompensation(true);
 
+        mRobotPos = new Position(0, 0);
 
         mAllModules = new SwerveDriveModule[]{mFLmodule, mFRmodule, mBLmodule, mBRmodule};
 
@@ -123,6 +125,13 @@ public class Drivetrain extends Subsystem{
     }
 
     public void displayTurnAngles(){
+        System.out.println(mFLmodule.getCurrent());
+        for (SwerveDriveModule m: mAllModules){
+            SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getAngle());
+        }
+    }
+
+    public void displayTurnAnglesRAW(){
         System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getRawAngle());
@@ -242,6 +251,31 @@ public class Drivetrain extends Subsystem{
 
 
         return 0;
+    }
+
+    public void updatePosition(){
+        mFLmodule.updateOdom();
+        mBRmodule.updateOdom();
+        mFRmodule.updateOdom();
+        mBLmodule.updateOdom();
+
+        mRobotPos = new Position(
+            mRobotPos.x + ((mFLmodule.getXYOffset().x + mFRmodule.getXYOffset().x + mBLmodule.getXYOffset().x + mBRmodule.getXYOffset().x) / 4.0),
+            mRobotPos.y + ((mFLmodule.getXYOffset().y + mFRmodule.getXYOffset().y + mBLmodule.getXYOffset().y + mBRmodule.getXYOffset().y) / 4.0)
+        );
+
+        // System.out.println(mRobotPos.y);
+        // if (((mFLmodule.getXYOffset().y + mFRmodule.getXYOffset().y + mBLmodule.getXYOffset().y + mBRmodule.getXYOffset().y) / 4.0) != 0)
+        // if (mFLmodule.getXYOffset().y != 0)
+        //     System.out.println(((mFLmodule.getXYOffset().y)));
+    }
+
+    public void zeroPosition(){
+        mRobotPos = new Position(0,0);
+    }
+
+    public Position getPosition(){
+        return new Position(mRobotPos);
     }
 
 }

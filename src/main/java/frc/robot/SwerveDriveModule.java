@@ -38,6 +38,7 @@ public class SwerveDriveModule{
     public double mInverter = 0;
     public double mTurnSetpointDesired = 0;
 
+    public double mLastPosition = 0;
 
     private boolean mTurnPhase = false;
 
@@ -68,6 +69,7 @@ public class SwerveDriveModule{
         mDriveMotor.enableVoltageCompensation(true);
 
         mTurnSetpoint = 0;
+        mLastPosition = getDistance();
 
         mTurnPhase = turnPhase;
 
@@ -133,6 +135,31 @@ public class SwerveDriveModule{
     public double setRawSpeed(double speed){
         mDriveMotor.set(ControlMode.PercentOutput, speed);
         return mDriveMotor.getSelectedSensorVelocity() * kNativeU2FPS;
+    }
+
+    public Position mModuleOffset;
+    public double dist = 0;
+
+    public void updateOdom(){
+        dist = getDistance() - mLastPosition;
+        mLastPosition = getDistance();
+
+        // System.out.println(getRobotRelativeHeading());
+
+        mModuleOffset = new Position((Math.cos(Math.toRadians(getRobotRelativeHeading())) * dist),
+                            (Math.sin(Math.toRadians(getRobotRelativeHeading())) * dist));
+    }
+
+    public Position getXYOffset(){
+        return mModuleOffset;
+    } 
+    
+    public double getDistance(){
+        return mDriveMotor.getSelectedSensorPosition() * kTicks2Feet;
+    }
+
+    public double getRobotRelativeHeading(){
+        return Drivetrain.getInstance().getAngle() - getAngle();
     }
 
     public String getLocationAsString(){
