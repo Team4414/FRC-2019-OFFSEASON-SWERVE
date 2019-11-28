@@ -69,7 +69,7 @@ public class Robot extends TimedRobot {
     // System.out.println(Drivetrain.getInstance().getPosition().y);
     // System.out.println(Drivetrain.getInstance().getAngle());
     // if (Drivetrain.getInstance().get)
-    // System.out.println(Drivetrain.getInstance.get);
+    // System.out.println(Drivetrain.getInstance().mFLmodule.getDistance());
 
     // System.out.println((Drivetrain.getInstance().mFLmodule.mError - Drivetrain.getInstance().mFLmodule.mLastError) / 0.02d);
   }

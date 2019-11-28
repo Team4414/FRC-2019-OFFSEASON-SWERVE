@@ -155,11 +155,11 @@ public class SwerveDriveModule{
     } 
     
     public double getDistance(){
-        return mDriveMotor.getSelectedSensorPosition() * kTicks2Feet;
+        return -mDriveMotor.getSelectedSensorPosition() * kTicks2Feet;
     }
 
     public double getRobotRelativeHeading(){
-        return Drivetrain.getInstance().getAngle() - getAngle();
+        return getAngle() + Drivetrain.getInstance().getAngle();
     }
 
     public String getLocationAsString(){

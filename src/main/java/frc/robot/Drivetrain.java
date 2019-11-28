@@ -127,7 +127,7 @@ public class Drivetrain extends Subsystem{
     public void displayTurnAngles(){
         System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
-            SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getAngle());
+            SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getDistance());
         }
     }
 
