@@ -28,6 +28,8 @@ public class SwerveDriveModule{
     private final double kD = (0.00024);  //0.00024
     private final double kTimestep = 0.02d;
 
+    public static final double kReversableWheelThreshold = 5;
+
     // PIDCommand
 
     public double mTurnSetpoint;
@@ -220,9 +222,9 @@ public class SwerveDriveModule{
 
         mLastError = mError;
     }
-    public void set(double degrees, double power, boolean reverseWheel){
+    public void set(double degrees, double power){
 
-        if (reverseWheel){
+        if (mVelSetpoint > (kReversableWheelThreshold * kNativeU2FPS)){
             double supplement = degrees > 0 ? degrees - 180 : 180 + degrees;
 
             if(Math.abs(supplement-mLastAngle) <= 90){

@@ -159,20 +159,27 @@ public class Drivetrain extends Subsystem{
         System.out.println();
     }
 
+    public double getModuleCommandedSpeed(SwerveLocation location){
+        switch (location){
+            case BACK_LEFT:
+                return swerveKinematics.rlWheelSpeed();
+            case BACK_RIGHT:
+                return swerveKinematics.rrWheelSpeed();
+            case FRONT_LEFT:
+                return swerveKinematics.flWheelSpeed();
+            case FRONT_RIGHT:
+                return swerveKinematics.frWheelSpeed();
+        }
+        return 0;
+    }
+
     public void setRobotRelative(double x, double y, double rotation){
         swerveKinematics.calculate(x, y, rotation);
 
-        if (swerveKinematics.getAverageSpeed() < kReversableWheelThreshold){
-            mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, true);
-            mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed, true);
-            mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed, true);
-            mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed, true);
-        }else{
-            mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, false);
-            mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed, false);
-            mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed, false);
-            mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed, false);
-        }
+        mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed);
+        mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed);
+        mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed);
+        mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed);
     }
 
     // public void calibrateGyro(boolean calibrate){
