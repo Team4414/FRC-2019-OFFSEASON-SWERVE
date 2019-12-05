@@ -95,6 +95,7 @@ public class Robot extends TimedRobot {
   public void teleopInit() {
     Drivetrain.getInstance().zeroGyro(); //zero gyro for field relative control
     Drivetrain.getInstance().enableAll(true); //enable motors
+    Drivetrain.getInstance().zeroPosition();
   }
 
   @Override

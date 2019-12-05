@@ -125,14 +125,14 @@ public class Drivetrain extends Subsystem{
     }
 
     public void displayTurnAngles(){
-        System.out.println(mFLmodule.getCurrent());
+        // System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
-            SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getDistance());
+            SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getAngle());
         }
     }
 
     public void displayTurnAnglesRAW(){
-        System.out.println(mFLmodule.getCurrent());
+        // System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getRawAngle());
         }
@@ -176,10 +176,18 @@ public class Drivetrain extends Subsystem{
     public void setRobotRelative(double x, double y, double rotation){
         swerveKinematics.calculate(x, y, rotation);
 
-        mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed);
-        mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed);
-        mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed);
-        mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed);
+        if (swerveKinematics.getAverageSpeed() > kReversableWheelThreshold){
+            mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, true);
+            mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed, true);
+            mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed, true);
+            mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed, true);
+        }else{
+            mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, false);
+            mFRmodule.set(swerveKinematics.frSteeringAngle(), swerveKinematics.frWheelSpeed() * kMaxTranslationSpeed, false);
+            mBLmodule.set(swerveKinematics.rlSteeringAngle(), swerveKinematics.rlWheelSpeed() * kMaxTranslationSpeed, false);
+            mBRmodule.set(swerveKinematics.rrSteeringAngle(), swerveKinematics.rrWheelSpeed() * kMaxTranslationSpeed, false);
+        }
+        
     }
 
     // public void calibrateGyro(boolean calibrate){
@@ -278,7 +286,8 @@ public class Drivetrain extends Subsystem{
     }
 
     public void zeroPosition(){
-        mRobotPos = new Position(0,0);
+        mRobotPos.x = 0;
+        mRobotPos.y = 0;
     }
 
     public Position getPosition(){

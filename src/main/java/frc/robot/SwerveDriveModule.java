@@ -161,7 +161,7 @@ public class SwerveDriveModule{
     }
 
     public double getRobotRelativeHeading(){
-        return getAngle() + Drivetrain.getInstance().getAngle();
+        return Drivetrain.getInstance().getAngle() - (-getAngle());
     }
 
     public String getLocationAsString(){
@@ -222,9 +222,9 @@ public class SwerveDriveModule{
 
         mLastError = mError;
     }
-    public void set(double degrees, double power){
+    public void set(double degrees, double power, boolean flip){
 
-        if (mVelSetpoint > (kReversableWheelThreshold * kNativeU2FPS)){
+        if (!flip){
             double supplement = degrees > 0 ? degrees - 180 : 180 + degrees;
 
             if(Math.abs(supplement-mLastAngle) <= 90){
@@ -240,10 +240,6 @@ public class SwerveDriveModule{
         }else{
             setSteeringDegrees(degrees);
             setDrivePower(power);
-        }
-
-        {
-           
         }
         // mVelSetpoint = power * 4096;
     }
