@@ -27,7 +27,7 @@ public class Drivetrain extends Subsystem{
         return instance;
     }
 
-    //min and max voltages for each potentiometer along with the zero angle in degrees.po
+    //min and max voltages for each potentiometer along with the zero angle in degrees
     //location 
     public static ModuleConfig frontLeftConfig  = new ModuleConfig(0.20751951, 4.739989749, 155.712);
     public static ModuleConfig frontRightConfig = new ModuleConfig(0.21362302, 4.704589362, 304.221);
@@ -42,7 +42,6 @@ public class Drivetrain extends Subsystem{
     public static SwerveDriveModule mBLmodule;
     public static SwerveDriveModule mBRmodule;
 
-    private Notifier mHeadingPID;
     private static final double kP = 1/180d;
     private static final double kI = 0;
     private static final double kD = 1/5000d; //70
@@ -54,7 +53,7 @@ public class Drivetrain extends Subsystem{
 
     public Position mRobotPos;
 
-    public TalonSRX gyroMotor;
+    public TalonSRX frTurn; //this one has pigeon
     public VictorSPX flTurn;
     public VictorSPX blTurn;
     public VictorSPX brTurn;
@@ -65,19 +64,19 @@ public class Drivetrain extends Subsystem{
 
     private Drivetrain(){
         //location, config, turn motor.
-        gyroMotor = new TalonSRX(14);
+        frTurn = new TalonSRX(14);
         flTurn = new VictorSPX(3);
         blTurn = new VictorSPX(2);
         brTurn = new VictorSPX(15);
 
         mFLmodule = new SwerveDriveModule(SwerveLocation.FRONT_LEFT, frontLeftConfig, flTurn , 4, 1, false);
-        mFRmodule = new SwerveDriveModule(SwerveLocation.FRONT_RIGHT, frontRightConfig, gyroMotor , 13, 2, true);
+        mFRmodule = new SwerveDriveModule(SwerveLocation.FRONT_RIGHT, frontRightConfig, frTurn , 13, 2, true);
         mBLmodule = new SwerveDriveModule(SwerveLocation.BACK_LEFT, backLeftConfig, blTurn, 1, 0, true);
         mBRmodule = new SwerveDriveModule(SwerveLocation.BACK_RIGHT, backRightConfig, brTurn, 16, 3, false);
 
-        gyroMotor.configOpenloopRamp(0.08);
-        gyroMotor.configVoltageCompSaturation(12);
-        gyroMotor.enableVoltageCompensation(true);
+        frTurn.configOpenloopRamp(0.08);
+        frTurn.configVoltageCompSaturation(12);
+        frTurn.enableVoltageCompensation(true);
 
         flTurn.configOpenloopRamp(0.08);
         flTurn.configVoltageCompSaturation(12);
@@ -91,24 +90,11 @@ public class Drivetrain extends Subsystem{
         brTurn.configVoltageCompSaturation(12);
         brTurn.enableVoltageCompensation(true);
 
-        mRobotPos = new Position(0, 0);
 
+        mRobotPos = new Position(0, 0);
         mAllModules = new SwerveDriveModule[]{mFLmodule, mFRmodule, mBLmodule, mBRmodule};
 
-        mGyro = new PigeonIMU(gyroMotor);
-
-        //no lag
-        mHeadingPID = new Notifier(() -> {
-            // startTime = Timer.getFPGATimestamp();
-
-            // double error = boundHalfDegrees(mSetpoint - getAngle());
-
-            // mClosedLoopRotateOutput = (error* -kP) + ((error - mLastError) * -kD * kTimestep);
-            // // mClosedLoopRotateOutput = 0;
-            // mLastError = error;
-        });
-
-        mHeadingPID.startPeriodic(kTimestep);
+        mGyro = new PigeonIMU(frTurn);
     }
 
     @Override
@@ -121,18 +107,18 @@ public class Drivetrain extends Subsystem{
     }
 
     public void enableAll(boolean enable){
-        SwerveDriveModule.motorEnabled = enable;
+        for(SwerveDriveModule m : mAllModules){
+            m.motorEnabled = enable;
+        }
     }
 
     public void displayTurnAngles(){
-        // System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getAngle());
         }
     }
 
     public void displayTurnAnglesRAW(){
-        // System.out.println(mFLmodule.getCurrent());
         for (SwerveDriveModule m: mAllModules){
             SmartDashboard.putNumber("Swerve " + m.getLocationAsString(), m.getRawAngle());
         }
@@ -147,7 +133,6 @@ public class Drivetrain extends Subsystem{
     public void setRawSpeed(double vel){
         for (SwerveDriveModule m: mAllModules){
             m.setDrivePower(vel);
-            // m.debug(Robot.xbox.getRawAxis(4));
         }
     }
 
@@ -156,7 +141,6 @@ public class Drivetrain extends Subsystem{
         for (SwerveDriveModule m: mAllModules){
             System.out.print(m.setRawSpeed(speed) + "\t");
         }
-        System.out.println();
     }
 
     public double getModuleCommandedSpeed(SwerveLocation location){
@@ -190,15 +174,6 @@ public class Drivetrain extends Subsystem{
         
     }
 
-    // public void calibrateGyro(boolean calibrate){
-    //     if (calibrate){
-    //         mGyro.enterCalibrationMode(CalibrationMode.Accelerometer);
-    //         mGyro.enterCalibrationMode(CalibrationMode.BootTareGyroAccel);
-    //     }else{
-
-    //     }
-    // }
-
     public void setFieldRelative(double controllerX, double controllerY, double controllerRotate){
         setRobotRelative((controllerX * Math.cos(angleRadians()) - (controllerY * Math.sin(angleRadians()))), 
                   (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
@@ -210,7 +185,6 @@ public class Drivetrain extends Subsystem{
     }
 
     double error = 0;
-
     public void setFieldRelative(double controllerX, double controllerY, double controllerRotate, boolean closedLoopHeading){
         if (closedLoopHeading){
             setClosedLoopSetpoint(controllerRotate);
@@ -254,18 +228,10 @@ public class Drivetrain extends Subsystem{
         return Math.toRadians(getAngle());
     }
 
-    //no lag
     public static double boundHalfDegrees(double angle_degrees) {
         while (angle_degrees >= 180.0) angle_degrees -= 360.0;
         while (angle_degrees < -180.0) angle_degrees += 360.0;
         return angle_degrees;
-    }
-
-    public static double kSticktoHeading(boolean snap){
-        
-
-
-        return 0;
     }
 
     public void updatePosition(){
@@ -275,14 +241,9 @@ public class Drivetrain extends Subsystem{
         mBLmodule.updateOdom();
 
         mRobotPos = new Position(
-            mRobotPos.x + ((mFLmodule.getXYOffset().x + mFRmodule.getXYOffset().x + mBLmodule.getXYOffset().x + mBRmodule.getXYOffset().x) / 4.0),
-            mRobotPos.y + ((mFLmodule.getXYOffset().y + mFRmodule.getXYOffset().y + mBLmodule.getXYOffset().y + mBRmodule.getXYOffset().y) / 4.0)
+            mRobotPos.x + ((mFLmodule.getXYDelta().x + mFRmodule.getXYDelta().x + mBLmodule.getXYDelta().x + mBRmodule.getXYDelta().x) / 4.0),
+            mRobotPos.y + ((mFLmodule.getXYDelta().y + mFRmodule.getXYDelta().y + mBLmodule.getXYDelta().y + mBRmodule.getXYDelta().y) / 4.0)
         );
-
-        // System.out.println(mRobotPos.y);
-        // if (((mFLmodule.getXYOffset().y + mFRmodule.getXYOffset().y + mBLmodule.getXYOffset().y + mBRmodule.getXYOffset().y) / 4.0) != 0)
-        // if (mFLmodule.getXYOffset().y != 0)
-        //     System.out.println(((mFLmodule.getXYOffset().y)));
     }
 
     public void zeroPosition(){

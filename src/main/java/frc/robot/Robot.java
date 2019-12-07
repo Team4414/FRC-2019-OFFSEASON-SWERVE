@@ -50,12 +50,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotPeriodic() {
-    // Drivetrain.getInstance().displayTurnAngles(); //push turn angles to SD
-    // System.out.println(stickToDegee(turnStick, 0, 1));
-    // System.out.println(Drivetrain.getInstance().mFLmodule.getError());
-    // System.out.println( deadZoneStick(driveStick, 1, 0));
-    // SmartDashboard.putNumber("Swerve Error", Drivetrain.getInstance().mFLmodule.getError());
-    // System.out.println(Math.hypot(deadZoneStick(driveStick, 0, 1), deadZoneStick(driveStick, 1, 0)));
     Drivetrain.getInstance().mFLmodule.updateHeadingLoop();
     Drivetrain.getInstance().mFRmodule.updateHeadingLoop();
     Drivetrain.getInstance().mBLmodule.updateHeadingLoop();
@@ -66,12 +60,6 @@ public class Robot extends TimedRobot {
     Drivetrain.getInstance().updatePosition();
 
     System.out.println("X: " + Drivetrain.getInstance().getPosition().x + "\t Y: " + Drivetrain.getInstance().getPosition().y + "\t" + Drivetrain.getInstance().getAngle());
-    // System.out.println(Drivetrain.getInstance().getPosition().y);
-    // System.out.println(Drivetrain.getInstance().getAngle());
-    // if (Drivetrain.getInstance().get)
-    // System.out.println(Drivetrain.getInstance().mFLmodule.getDistance());
-
-    // System.out.println((Drivetrain.getInstance().mFLmodule.mError - Drivetrain.getInstance().mFLmodule.mLastError) / 0.02d);
   }
 
   @Override
@@ -82,7 +70,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    Drivetrain.getInstance().enableAll(true); //disable all motors in auto for calibration
+    Drivetrain.getInstance().enableAll(false); //disable all motors in auto for calibration
   }
 
   @Override
@@ -100,19 +88,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    
-    // Drivetrain.getInstance().mFLmodule.updateHeadingLoop();
-    
-    // System.out.println(Drivetrain.getInstance().mFLmodule.mError + "\t" + Drivetrain.getInstance().mFLmodule.mLastError);
 
     mSticksAreInDeadzone = (getDeadZoneStick(driveStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0) && getDeadZoneStick(turnStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0));
-
-    // System.out.println(getDeadZoneStick(driveStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0));
-    // Drivetrain.getInstance().setFieldRelative(0, 0, stickToDegee(turnStick , 0, 1), true);
-
-    // if (driveStick.getRawButton(12)){
-    //   Drivetrain.getInstance().zeroGyro();
-    // }
 
     if (!driveStick.getRawButton(11)){
        Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), stickToDegee(turnStick , 0, 1), true);
@@ -137,13 +114,6 @@ public class Robot extends TimedRobot {
   }
 
   private boolean getDeadZoneStick(Joystick stick, int stickId, int otherStick){
-    // if (Math.abs(stick.getRawAxis(stickId)) < kJoystickDeadzone){
-    //   // mSticksAreInDeadzone = true;
-    //   return true;
-    // }
-    // // mSticksAreInDeadzone = false;
-    // return false;
-    // System.out.println(Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick)));
 
     if (Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick)) < kJoystickDeadzone){
       return true;
@@ -153,49 +123,25 @@ public class Robot extends TimedRobot {
   }
 
   private double deadZoneStick(Joystick stick, int stickId, int otherStick){
-    double scaler = 1;
-    
+
     if (getDeadZoneStick(stick, stickId, otherStick)){
       return 0;
     }
 
-    //scale for square sticks
-    // if (Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick)) > 1){
-    //   return stick.getRawAxis(stickId) / (Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick)));
-    // }
-
-    // if (Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick)) > 1){
-    //   scaler = Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick));
-    // }
     return stick.getRawAxis(stickId);
   }
   
   //for translate
   private double getScalar(Joystick stick, int stickX, int stickY, double scalar){
-    // return (Math.pow(Math.abs(deadZoneStick(stick, stickId)), scalar) * Math.signum(deadZoneStick(stick, stickId)));
     return Math.pow(Math.hypot(deadZoneStick(stick, stickX, stickY), deadZoneStick(stick, stickY, stickX)), kTranslationScalar);
-    // return 1;
-    // return Math.pow((Math.hypot(deadZoneStick(stick, stickX, stickY), deadZoneStick(stick, stickY, stickX))), 2);
   }
 
-  //inverse tan (-x / y)
   double lastHeading = 0;
-  // double startTime;
-  //atan lag is 0.0005
   private double stickToDegee(Joystick stick, int stickX, int stickY){
-    // startTime = Timer.getFPGATimestamp();\
-
-    
     double hyp = Math.hypot(stick.getRawAxis(stickX), -stick.getRawAxis(stickY));
     if (hyp > 0.5){
       lastHeading = Math.toDegrees(Math.atan2(stick.getRawAxis(stickX) / hyp, -stick.getRawAxis(stickY) / hyp)); //negate stick y and x for invert stick
     }
-    // System.out.println("Atan lag: " + (Timer.getFPGATimestamp() - startTime));
     return lastHeading;
-  }
-
-  @Override
-  public void testPeriodic() {
-    // Drivetrain.getInstance().enableAll(false);
   }
 }

@@ -6,8 +6,6 @@ import com.ctre.phoenix.motorcontrol.IMotorController;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.AnalogInput;
-import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.command.PIDCommand;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class SwerveDriveModule{
@@ -23,7 +21,6 @@ public class SwerveDriveModule{
     private ModuleConfig mConfig;
     private SwerveLocation mLocation;
 
-    private Notifier turnPID;
     private final double kP = (0.007); //0.012
     private final double kD = (0.00024);  //0.00024
     private final double kTimestep = 0.02d;
@@ -44,7 +41,7 @@ public class SwerveDriveModule{
 
     private boolean mTurnPhase = false;
 
-    public static boolean motorEnabled = true;
+    public boolean motorEnabled = true;
     
     public static final double kFeet2Ticks = 6579;
     public static final double kTicks2Feet = 1/kFeet2Ticks;
@@ -78,13 +75,6 @@ public class SwerveDriveModule{
         mLocation = location;
         mConfig = config;
         mTurnPot = new AnalogInput(kTurnSensor);
-
-        turnPID = new Notifier(() -> {
-
-            
-        });
-
-        // turnPID.startPeriodic(kTimestep);
     }
 
     public void config(ModuleConfig config){
@@ -139,21 +129,19 @@ public class SwerveDriveModule{
         return mDriveMotor.getSelectedSensorVelocity() * kNativeU2FPS;
     }
 
-    public Position mModuleOffset;
+    public Position mModulePositionDelta;
     public double dist = 0;
 
     public void updateOdom(){
         dist = getDistance() - mLastPosition;
         mLastPosition = getDistance();
 
-        // System.out.println(getRobotRelativeHeading());
-
-        mModuleOffset = new Position((Math.cos(Math.toRadians(getRobotRelativeHeading())) * dist),
+        mModulePositionDelta = new Position((Math.cos(Math.toRadians(getRobotRelativeHeading())) * dist),
                             (Math.sin(Math.toRadians(getRobotRelativeHeading())) * dist));
     }
 
-    public Position getXYOffset(){
-        return mModuleOffset;
+    public Position getXYDelta(){
+        return mModulePositionDelta;
     } 
     
     public double getDistance(){
@@ -189,8 +177,7 @@ public class SwerveDriveModule{
     }
 
     public void setSteeringDegrees(double deg){
-        // if (!Robot.mSticksAreInDeadzone)
-            mTurnSetpointDesired = deg;
+        mTurnSetpointDesired = deg;
     }
 
     public void updateHeadingLoop(){
@@ -202,22 +189,9 @@ public class SwerveDriveModule{
         mError = getError();
         mInverter = (mTurnPhase) ? -1 : 1;
 
-        // System.out.println(mTurnSetpoint);
-
         if (motorEnabled){
-            // if (Robot.mSticksAreInDeadzone){
-            //     mTurnSetpoint = getAngle();
-            // }
-                mTurnMotor.set(ControlMode.PercentOutput, mInverter * ((mError * kP) + (((mError - mLastError) / kTimestep) * kD)));
-                // System.out.println((mError - mLastError) / 0.02d);
-                // System.out.println(mError);
-            // }else{
-                // mTurnMotor.set(ControlMode.PercentOutput, 0);
-            // }
-                mDriveMotor.set(ControlMode.Velocity, Math.cos(Math.toRadians(mError)) * mVelSetpoint);
-        }else{
-            // mTurnMotor.set(ControlMode.PercentOutput, 0);
-            // mDriveMotor.set(ControlMode.PercentOutput, 0);
+            mTurnMotor.set(ControlMode.PercentOutput, mInverter * ((mError * kP) + (((mError - mLastError) / kTimestep) * kD)));
+            mDriveMotor.set(ControlMode.Velocity, Math.cos(Math.toRadians(mError)) * mVelSetpoint);
         }
 
         mLastError = mError;
@@ -241,18 +215,10 @@ public class SwerveDriveModule{
             setSteeringDegrees(degrees);
             setDrivePower(power);
         }
-        // mVelSetpoint = power * 4096;
     }
 
     public void setDrivePower(double fps){
         mVelSetpoint = fps * kFPS2NativeU;
-    }
-
-    public void debug(double kFVal){
-        kFVal *= 1;
-        System.out.println(mDriveMotor.getClosedLoopError() + "\t\t" + kFVal);
-        kDriveF = kFVal;
-        mDriveMotor.config_kF(0, kFVal);
     }
 
     public static class ModuleConfig{
