@@ -16,6 +16,7 @@ public class Drivetrain extends Subsystem{
 
     private static Drivetrain instance;
 
+
     private SwerveKinematics swerveKinematics = new SwerveKinematics();
     
     public static final double kMaxTranslationSpeed = 15; //feet per second
@@ -36,7 +37,7 @@ public class Drivetrain extends Subsystem{
     
     public static ModuleConfig frontLeftConfig  = new ModuleConfig(0.20751951, 4.739989749, 153.74);
     public static ModuleConfig frontRightConfig = new ModuleConfig(0.21362302, 4.704589362, 343.00);
-    public static ModuleConfig backLeftConfig   = new ModuleConfig(0.26123044, 4.735106937, 10.90);
+    public static ModuleConfig backLeftConfig   = new ModuleConfig(0.26123044, 4.735106937, 195);
     public static ModuleConfig backRightConfig  = new ModuleConfig(0.22583005, 4.758300294, 156.294);
 
     public static PigeonIMU mGyro;
