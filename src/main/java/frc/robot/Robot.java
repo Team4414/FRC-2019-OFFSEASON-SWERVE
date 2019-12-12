@@ -55,7 +55,7 @@ public class Robot extends TimedRobot {
     Drivetrain.getInstance().mBLmodule.updateHeadingLoop();
     Drivetrain.getInstance().mBRmodule.updateHeadingLoop();
 
-    Drivetrain.getInstance().displayTurnAngles();
+    Drivetrain.getInstance().displayTurnAnglesRaw();
 
     Drivetrain.getInstance().updatePosition();
 
@@ -75,7 +75,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
-    // Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
+    Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
     // Drivetrain.getInstance().setFieldRelative(-deadZoneStick(0), deadZoneStick(1), xbox.getPOV(), true);
   }
 
