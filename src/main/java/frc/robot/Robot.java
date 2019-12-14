@@ -1,5 +1,8 @@
 package frc.robot;
 
+import java.io.File;
+import java.io.IOException;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
@@ -8,6 +11,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Limelight.CAM_MODE;
@@ -15,6 +19,8 @@ import frc.robot.Limelight.LED_STATE;
 import frc.robot.Limelight.Side;
 import frc.robot.SwerveDriveModule.ModuleConfig;
 import frc.robot.SwerveDriveModule.SwerveLocation;
+import jaci.pathfinder.Pathfinder;
+import jaci.pathfinder.Trajectory;
 
 public class Robot extends TimedRobot {
 
@@ -36,6 +42,8 @@ public class Robot extends TimedRobot {
   public static PowerDistributionPanel pdp = new PowerDistributionPanel(0);
   Limelight mLimelight;
 
+  public PurePursuitPath mTestAuto;
+
   @Override
   public void robotInit() {
     driveStick = new Joystick(0);
@@ -46,6 +54,8 @@ public class Robot extends TimedRobot {
     mLimelight = new Limelight(Side.BALL);
     Drivetrain.getInstance().zeroGyro();
     Drivetrain.getInstance().zeroPosition();
+
+    mTestAuto = new PurePursuitPath(getTraj("testPath"));
   }
 
   @Override
@@ -55,11 +65,10 @@ public class Robot extends TimedRobot {
     Drivetrain.getInstance().mBLmodule.updateHeadingLoop();
     Drivetrain.getInstance().mBRmodule.updateHeadingLoop();
 
-    Drivetrain.getInstance().displayTurnAnglesRaw();
-
+    
     Drivetrain.getInstance().updatePosition();
 
-    System.out.println("X: " + Drivetrain.getInstance().getPosition().x + "\t Y: " + Drivetrain.getInstance().getPosition().y + "\t" + Drivetrain.getInstance().getAngle());
+    // Drivetrain.getInstance().displayTurnAnglesRaw();
   }
 
   @Override
@@ -70,12 +79,21 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    Drivetrain.getInstance().enableAll(false); //disable all motors in auto for calibration
+    // Drivetrain.getInstance().enableAll(false); //disable all motors in auto for calibration
+    Drivetrain.getInstance().zeroPosition();
+    Drivetrain.getInstance().zeroGyro();
+    mTestAuto.start();
   }
 
   @Override
   public void autonomousPeriodic() {
-    Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
+    System.out.println("X: " + Drivetrain.getInstance().getPosition().x + "\t Y: " + Drivetrain.getInstance().getPosition().y + "\t" + Drivetrain.getInstance().getAngle());
+
+    Scheduler.getInstance().run();
+    // Drivetrain.getInstance().setFieldRelativeRawVel(-6, -6, 0);
+
+    // Drivetrain.getInstance().setFieldRelativeRawVel(1, 1, 0);
+    // Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
     // Drivetrain.getInstance().setFieldRelative(-deadZoneStick(0), deadZoneStick(1), xbox.getPOV(), true);
   }
 
@@ -85,17 +103,18 @@ public class Robot extends TimedRobot {
     Drivetrain.getInstance().enableAll(true); //enable motors
     Drivetrain.getInstance().zeroPosition();
   }
-
+  
   @Override
   public void teleopPeriodic() {
+
 
     mSticksAreInDeadzone = (getDeadZoneStick(driveStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0) && getDeadZoneStick(turnStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0));
 
     if (!driveStick.getRawButton(11)){
-       Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), stickToDegee(turnStick , 0, 1), true);
+       Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), stickToDegee(turnStick , 0, 1), true);
     }else if(driveStick.getRawButton(11)){
       lastHeading = Drivetrain.getInstance().getAngle();
-        Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), -deadZoneStick(turnStick, 0, 1), false);
+      Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -deadZoneStick(turnStick, 0, 1), false);
     }else if (driveStick.getRawButton(12)){
       Drivetrain.getInstance().zeroGyro();
       // mLimelight.setLED(LED_STATE.ON);
@@ -144,4 +163,20 @@ public class Robot extends TimedRobot {
     }
     return lastHeading;
   }
+
+  private static String kPathLocation = "/home/lvuser/deploy/output/";
+  private static String kPathSuffix = ".pf1.csv";
+
+  private static Trajectory getTraj(String name){
+    try{
+        return Pathfinder.readFromCSV(
+            new File(
+                kPathLocation + name + kPathSuffix
+            )
+        );
+    }catch(IOException e){
+        System.out.println("!!!!!!!!!! IO Exception on Reading Traj !!!!!!!!!!");
+        return null;
+    }
+}
 }

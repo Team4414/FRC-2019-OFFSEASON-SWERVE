@@ -3,10 +3,7 @@ package frc.robot;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.ctre.phoenix.sensors.PigeonIMU;
-import com.ctre.phoenix.sensors.PigeonIMU.CalibrationMode;
 
-import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.SwerveDriveModule.ModuleConfig;
@@ -14,8 +11,7 @@ import frc.robot.SwerveDriveModule.SwerveLocation;
 
 public class Drivetrain extends Subsystem{
 
-    private static Drivetrain instance;
-
+    private static Drivetrain instance; 
 
     private SwerveKinematics swerveKinematics = new SwerveKinematics();
     
@@ -164,7 +160,7 @@ public class Drivetrain extends Subsystem{
     }
 
     public void setRobotRelative(double x, double y, double rotation){
-        swerveKinematics.calculate(x, y, rotation);
+        swerveKinematics.calculate(y, -x, rotation); //x and y flipped
 
         if (swerveKinematics.getAverageSpeed() > kReversableWheelThreshold){
             mFLmodule.set(swerveKinematics.flSteeringAngle(), swerveKinematics.flWheelSpeed() * kMaxTranslationSpeed, true);
@@ -183,7 +179,18 @@ public class Drivetrain extends Subsystem{
     public void setFieldRelative(double controllerX, double controllerY, double controllerRotate){
         setRobotRelative((controllerX * Math.cos(angleRadians()) - (controllerY * Math.sin(angleRadians()))), 
                   (controllerX * Math.sin(angleRadians()) + (controllerY * Math.cos(angleRadians()))), controllerRotate);
-    } 
+    }
+
+    /**
+     * For Auto.
+     * 
+     * @param xVel
+     * @param yVel
+     * @param heading
+     */
+    public void setFieldRelativeRawVel(double xVel, double yVel, double heading){
+        setFieldRelative((xVel / kMaxTranslationSpeed), (yVel / kMaxTranslationSpeed), heading, true);
+    }
 
     public void setOnlyYRobotRelative(double controllerX, double controllerY, double controllerRotate){
         setRobotRelative((controllerX), 

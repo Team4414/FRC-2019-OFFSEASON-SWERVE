@@ -56,8 +56,8 @@ public class SwerveDriveModule{
         mDriveMotor = new TalonSRX(kDrivePort);
 
         mDriveMotor.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder);
-        mDriveMotor.config_kP(0, 0.1); //0.2
-        mDriveMotor.config_kF(0, 0.103);
+        mDriveMotor.config_kP(0, 0.060); //0.1
+        mDriveMotor.config_kF(0, 0.083);
         mDriveMotor.setSensorPhase(true);
         mDriveMotor.overrideLimitSwitchesEnable(false);
         mDriveMotor.overrideSoftLimitsEnable(false);
@@ -83,6 +83,10 @@ public class SwerveDriveModule{
 
     public ModuleConfig getConfig(){
         return mConfig;
+    }
+
+    public double getSpeed(){
+        return mDriveMotor.getSelectedSensorVelocity() * kNativeU2FPS;
     }
 
     /**
