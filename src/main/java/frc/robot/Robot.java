@@ -27,9 +27,14 @@ public class Robot extends TimedRobot {
     driveWithJoystick();
   }
 
+  Rotation2d m_lastRot;
   private void driveWithJoystick() {
-    Translation2d speed = new Translation2d( m_controller.getRawAxis(1),m_controller.getRawAxis(2));
+    Translation2d speed = new Translation2d( m_controller.getRawAxis(2),m_controller.getRawAxis(2));
+    if (m_controller.getMagnitude() < .07) { speed = new Translation2d();}
+    speed = speed.times(Math.pow(speed.getNorm(),2));
     Rotation2d rot = new Rotation2d(m_controller.getDirectionRadians());
+    if (m_controller.getMagnitude() < .5) { rot = m_lastRot;}
+    m_lastRot = rot;
     Drivetrain.getInstance().setFieldRelativeWithHeading(speed, rot);
   }
 }
