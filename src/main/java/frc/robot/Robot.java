@@ -1,182 +1,50 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) 2019 FIRST. All Rights Reserved.                             */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
 package frc.robot;
 
-import java.io.File;
-import java.io.IOException;
-
-import com.ctre.phoenix.motorcontrol.ControlMode;
-import com.ctre.phoenix.motorcontrol.can.TalonSRX;
-import com.ctre.phoenix.motorcontrol.can.VictorSPX;
-
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.PowerDistributionPanel;
+import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.command.Scheduler;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.Limelight.CAM_MODE;
-import frc.robot.Limelight.LED_STATE;
-import frc.robot.Limelight.Side;
-import frc.robot.SwerveDriveModule.ModuleConfig;
-import frc.robot.SwerveDriveModule.SwerveLocation;
-import jaci.pathfinder.Pathfinder;
-import jaci.pathfinder.Trajectory;
+import edu.wpi.first.wpilibj.XboxController;
+
+import static frc.robot.Drivetrain.kMaxAngularSpeed;
+import static frc.robot.Drivetrain.kMaxSpeed;
 
 public class Robot extends TimedRobot {
-
-  public static final double kWheelBaseLength = 17;
-  public static final double kWheelBaseWidth = 17;
-  public static final double kSwerveDiagonal = Math.hypot(kWheelBaseLength, kWheelBaseWidth);
-  public static Joystick driveStick;
-  public static Joystick xbox;
-  public static Joystick turnStick;
-  private static final double kJoystickDeadzone = 0.06;
-  private static final double kRotationScalar = 1.4;
-  private static final double kRotationMax = 0.8;
-  private static final double kTranslationScalar = 1; //1.4
-
-  private static VictorSPX mPP;
-
-  public static boolean mSticksAreInDeadzone = false;
-
-  public static PowerDistributionPanel pdp = new PowerDistributionPanel(0);
-  Limelight mLimelight;
-
-  public PurePursuitPath mTestAuto;
-
-  @Override
-  public void robotInit() {
-    driveStick = new Joystick(0);
-    turnStick = new Joystick(1);
-    xbox = new Joystick(2);
-
-    mPP = new VictorSPX(11);
-    mLimelight = new Limelight(Side.BALL);
-    Drivetrain.getInstance().zeroGyro();
-    Drivetrain.getInstance().zeroPosition();
-
-    mTestAuto = new PurePursuitPath(getTraj("testPath"));
-  }
-
-  @Override
-  public void robotPeriodic() {
-    Drivetrain.getInstance().mFLmodule.updateHeadingLoop();
-    Drivetrain.getInstance().mFRmodule.updateHeadingLoop();
-    Drivetrain.getInstance().mBLmodule.updateHeadingLoop();
-    Drivetrain.getInstance().mBRmodule.updateHeadingLoop();
-
-    
-    Drivetrain.getInstance().updatePosition();
-
-    // Drivetrain.getInstance().displayTurnAnglesRaw();
-  }
-
-  @Override
-  public void disabledInit() {
-    mLimelight.setCamMode(CAM_MODE.VISION);
-    mLimelight.setLED(LED_STATE.ON);
-  }
-
-  @Override
-  public void autonomousInit() {
-    // Drivetrain.getInstance().enableAll(false); //disable all motors in auto for calibration
-    Drivetrain.getInstance().zeroPosition();
-    Drivetrain.getInstance().zeroGyro();
-    mTestAuto.start();
-  }
+  private final XboxController m_controller = new XboxController(0);
+  private final Drivetrain m_swerve = new Drivetrain();
 
   @Override
   public void autonomousPeriodic() {
-    System.out.println("X: " + Drivetrain.getInstance().getPosition().x + "\t Y: " + Drivetrain.getInstance().getPosition().y + "\t" + Drivetrain.getInstance().getAngle());
-
-    Scheduler.getInstance().run();
-    // Drivetrain.getInstance().setFieldRelativeRawVel(-6, -6, 0);
-
-    // Drivetrain.getInstance().setFieldRelativeRawVel(1, 1, 0);
-    // Drivetrain.getInstance().calibrateAll(); //calibrate all the potentiometers (hand-spin each module at least 1 rev to capture min and max sensor voltages)
-    // Drivetrain.getInstance().setFieldRelative(-deadZoneStick(0), deadZoneStick(1), xbox.getPOV(), true);
+    driveWithJoystick(false);
+    m_swerve.updateOdometry();
   }
 
-  @Override
-  public void teleopInit() {
-    Drivetrain.getInstance().zeroGyro(); //zero gyro for field relative control
-    Drivetrain.getInstance().enableAll(true); //enable motors
-    Drivetrain.getInstance().zeroPosition();
-  }
-  
   @Override
   public void teleopPeriodic() {
-
-
-    mSticksAreInDeadzone = (getDeadZoneStick(driveStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0) && getDeadZoneStick(turnStick, 0, 1) && getDeadZoneStick(driveStick, 1, 0));
-
-    if (!driveStick.getRawButton(11)){
-       Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), stickToDegee(turnStick , 0, 1), true);
-    }else if(driveStick.getRawButton(11)){
-      lastHeading = Drivetrain.getInstance().getAngle();
-      Drivetrain.getInstance().setFieldRelative(getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 0, 1), -deadZoneStick(turnStick, 0, 1), false);
-    }else if (driveStick.getRawButton(12)){
-      Drivetrain.getInstance().zeroGyro();
-      // mLimelight.setLED(LED_STATE.ON);
-      // mLimelight.setCamMode(CAM_MODE.VISION);
-      // Drivetrain.getInstance().setFieldRelative(0.1 * mLimelight.tX(), -getScalar(driveStick, 0, 1, kTranslationScalar) * deadZoneStick(driveStick, 1, 0), stickToDegee(turnStick , 0, 1), false);
-    }else{
-      mLimelight.setLED(LED_STATE.OFF);
-    }
-    if(turnStick.getRawButton(12)){
-      mPP.set(ControlMode.PercentOutput, -1);
-    }else if(turnStick.getRawButton(11)){
-      mPP.set(ControlMode.PercentOutput, 1);
-    }else{
-      mPP.set(ControlMode.PercentOutput, -0.166);
-    }
+    driveWithJoystick(true);
   }
 
-  private boolean getDeadZoneStick(Joystick stick, int stickId, int otherStick){
+  private void driveWithJoystick(boolean fieldRelative) {
+    // Get the x speed. We are inverting this because Xbox controllers return
+    // negative values when we push forward.
+    final var xSpeed = -m_controller.getY(GenericHID.Hand.kLeft) * kMaxSpeed;
 
-    if (Math.hypot(stick.getRawAxis(stickId), stick.getRawAxis(otherStick)) < kJoystickDeadzone){
-      return true;
-    }else{
-      return false;
-    }
+    // Get the y speed or sideways/strafe speed. We are inverting this because
+    // we want a positive value when we pull to the left. Xbox controllers
+    // return positive values when you pull to the right by default.
+    final var ySpeed = -m_controller.getX(GenericHID.Hand.kLeft) * kMaxSpeed;
+
+    // Get the rate of angular rotation. We are inverting this because we want a
+    // positive value when we pull to the left (remember, CCW is positive in
+    // mathematics). Xbox controllers return positive values when you pull to
+    // the right by default.
+    final var rot = -m_controller.getX(GenericHID.Hand.kRight) * kMaxAngularSpeed;
+
+    m_swerve.drive(xSpeed, ySpeed, rot, fieldRelative);
   }
-
-  private double deadZoneStick(Joystick stick, int stickId, int otherStick){
-
-    if (getDeadZoneStick(stick, stickId, otherStick)){
-      return 0;
-    }
-
-    return stick.getRawAxis(stickId);
-  }
-  
-  //for translate
-  private double getScalar(Joystick stick, int stickX, int stickY, double scalar){
-    return Math.pow(Math.hypot(deadZoneStick(stick, stickX, stickY), deadZoneStick(stick, stickY, stickX)), kTranslationScalar);
-  }
-
-  double lastHeading = 0;
-  private double stickToDegee(Joystick stick, int stickX, int stickY){
-    double hyp = Math.hypot(stick.getRawAxis(stickX), -stick.getRawAxis(stickY));
-    if (hyp > 0.5){
-      lastHeading = Math.toDegrees(Math.atan2(stick.getRawAxis(stickX) / hyp, -stick.getRawAxis(stickY) / hyp)); //negate stick y and x for invert stick
-    }
-    return lastHeading;
-  }
-
-  private static String kPathLocation = "/home/lvuser/deploy/output/";
-  private static String kPathSuffix = ".pf1.csv";
-
-  private static Trajectory getTraj(String name){
-    try{
-        return Pathfinder.readFromCSV(
-            new File(
-                kPathLocation + name + kPathSuffix
-            )
-        );
-    }catch(IOException e){
-        System.out.println("!!!!!!!!!! IO Exception on Reading Traj !!!!!!!!!!");
-        return null;
-    }
-}
 }
