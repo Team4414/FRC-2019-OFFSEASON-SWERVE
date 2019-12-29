@@ -5,7 +5,7 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
-package frc.robot;
+package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj.AnalogGyro;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
@@ -13,13 +13,24 @@ import edu.wpi.first.wpilibj.geometry.Translation2d;
 import edu.wpi.first.wpilibj.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.wpilibj.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.controller.PIDController;
 
 /**
  * Represents a swerve drive style drivetrain.
  */
-public class Drivetrain {
+public class Drivetrain extends SubsystemBase {
+
+  private static Drivetrain instance;
+  public static Drivetrain getInstance(){
+      if (instance == null)
+          instance = new Drivetrain();
+      return instance;
+  }
+
+
   public static final double kMaxSpeed = 3.0; // 3 meters per second
-  public static final double kMaxAngularSpeed = Math.PI; // 1/2 rotation per second
+  public static final double kMaxAngularSpeed = kMaxSpeed * 0.381; // Theoretical Max Rotation
 
   private final Translation2d m_frontLeftLocation = new Translation2d(0.381, 0.381);
   private final Translation2d m_frontRightLocation = new Translation2d(0.381, -0.381);
@@ -39,15 +50,18 @@ public class Drivetrain {
 
   private final SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(m_kinematics, getAngle());
 
+  private final PIDController m_headingController = new PIDController(1, 0, 0);
+
   public Drivetrain() {
+    m_headingController.enableContinuousInput(-Math.PI, Math.PI);
     m_gyro.reset();
   }
 
-  /**
-   * Returns the angle of the robot as a Rotation2d.
-   *
-   * @return The angle of the robot.
-   */
+  @Override
+  public void periodic() {
+    
+  }
+
   public Rotation2d getAngle() {
     // Negating the angle because WPILib gyros are CW positive.
     return Rotation2d.fromDegrees(-m_gyro.getAngle());
@@ -62,11 +76,12 @@ public class Drivetrain {
    * @param fieldRelative Whether the provided x and y speeds are relative to the field.
    */
   @SuppressWarnings("ParameterName")
-  public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
+  public void drive(Translation2d speed, double rot, boolean fieldRelative) {
+
     var swerveModuleStates = m_kinematics.toSwerveModuleStates(
         fieldRelative ? ChassisSpeeds.fromFieldRelativeSpeeds(
-            xSpeed, ySpeed, rot, getAngle())
-            : new ChassisSpeeds(xSpeed, ySpeed, rot)
+            speed.times(kMaxSpeed).getX(), speed.times(kMaxSpeed).getY(), rot * kMaxAngularSpeed, getAngle())
+            : new ChassisSpeeds(speed.times(kMaxSpeed).getX(), speed.times(kMaxSpeed).getY(), rot)
     );
     SwerveDriveKinematics.normalizeWheelSpeeds(swerveModuleStates, kMaxSpeed);
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
@@ -75,9 +90,17 @@ public class Drivetrain {
     m_backRight.setDesiredState(swerveModuleStates[3]);
   }
 
-  /**
-   * Updates the field relative position of the robot.
-   */
+  public void setRobotRelative(Translation2d speed, double rot) {
+    drive(speed, rot  , false);
+  }
+  public void setFieldRelative(Translation2d speed, double rot) {
+    drive(speed, rot , true);
+  }
+  public void setFieldRelativeWithHeading(Translation2d speed, Rotation2d theta) {
+    setFieldRelative(speed, m_headingController.calculate(getAngle().getRadians(), theta.getRadians()) );
+  }
+
+
   public void updateOdometry() {
     m_odometry.update(
         getAngle(),

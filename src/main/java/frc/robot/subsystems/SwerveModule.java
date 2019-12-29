@@ -17,12 +17,12 @@ import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.trajectory.TrapezoidProfile;
 
 public class SwerveModule {
+
   private static final double kWheelRadius = 0.0508;
   private static final int kEncoderResolution = 4096;
 
   private static final double kModuleMaxAngularVelocity = Drivetrain.kMaxAngularSpeed;
-  private static final double kModuleMaxAngularAcceleration
-      = 2 * Math.PI; // radians per second squared
+  private static final double kModuleMaxAngularAcceleration = 2 * Math.PI; // radians per second squared
 
   private final SpeedController m_driveMotor;
   private final SpeedController m_turningMotor;
@@ -32,12 +32,10 @@ public class SwerveModule {
 
   private final PIDController m_drivePIDController = new PIDController(1, 0, 0);
 
-  private final ProfiledPIDController m_turningPIDController
-      = new ProfiledPIDController(1, 0, 0,
+  private final ProfiledPIDController m_turningPIDController = new ProfiledPIDController(1, 0, 0,
       new TrapezoidProfile.Constraints(kModuleMaxAngularVelocity, kModuleMaxAngularAcceleration));
 
-
-  // TODO Init last angle     
+  // TODO Init last angle
   private double mLastAngle;
 
   /**
@@ -46,7 +44,7 @@ public class SwerveModule {
    * @param driveMotorChannel   ID for the drive motor.
    * @param turningMotorChannel ID for the turning motor.
    */
-  public SwerveModule(int driveMotorChannel, int turningMotorChannel) {
+  public SwerveModule(final int driveMotorChannel, final int turningMotorChannel) {
     m_driveMotor = new PWMVictorSPX(driveMotorChannel);
     m_turningMotor = new PWMVictorSPX(turningMotorChannel);
 
@@ -79,40 +77,41 @@ public class SwerveModule {
    *
    * @param state Desired state with speed and angle.
    */
-  public void setDesiredState(SwerveModuleState state) {
+  public void setDesiredState(final SwerveModuleState state) {
 
-    double supplement = state.angle.getDegrees() > 0 ? state.angle.getDegrees() - 180 : 180 + state.angle.getDegrees();
+    double speed;
+    double angle;
 
-    if(Math.abs(supplement-mLastAngle) <= 90){
-        setSteeringDegrees(supplement);
-        setDrivePower(-power);
+    final double supplement = state.angle.getRadians() > 0 ? state.angle.getRadians() - Math.PI
+        : Math.PI + state.angle.getRadians();
+
+    // Dont turn the module unless speed != 0
+    if (state.speedMetersPerSecond == 0) {
+      speed = 0;
+      angle = mLastAngle;
+    } else {
+
+      // Calculate if the module should change driving direction if error > 90 degrees
+      if (Math.abs(supplement - mLastAngle) <= Math.PI / 2) {
+        angle = supplement;
+        speed = -state.speedMetersPerSecond;
         mLastAngle = supplement;
+      } else {
+        angle = state.angle.getRadians();
+        speed = state.speedMetersPerSecond;
+        mLastAngle = state.angle.getRadians();
+      }
     }
-    else {
-        setSteeringDegrees(degrees);
-        setDrivePower(power);
-        mLastAngle = degrees;
-    }
-
 
     // Calculate the drive output from the drive PID controller.
-    final var driveOutput = m_drivePIDController.calculate(
-        m_driveEncoder.getRate(), state.speedMetersPerSecond);
+    final double driveOutput = m_drivePIDController.calculate(m_driveEncoder.getRate(), speed);
 
     // Calculate the turning motor output from the turning PID controller.
-    final var turnOutput = m_turningPIDController.calculate(
-        m_turningEncoder.get(), state.angle.getRadians()
-    );
+    final double turnOutput = m_turningPIDController.calculate(m_turningEncoder.get(), angle);
 
     // Calculate the turning motor output from the turning PID controller.
     m_driveMotor.set(driveOutput);
     m_turningMotor.set(turnOutput);
   }
-
-  public void setDriveOutput(Double power){
-    m_driveMotor.set(1.0);
-_   m_driveMotor.set(m_drivePIDController.calculate(m_driveEncoder.getRate(), power));
-  }
-
 
 }
